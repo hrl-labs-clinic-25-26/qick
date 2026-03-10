@@ -1,4 +1,4 @@
-// synchronizer_n.sv
+// synchronizer_n_sv.sv
 // SystemVerilog translation of synchronizer_n.vhd
 
 module synchronizer_n_sv #(parameter N = 2)(

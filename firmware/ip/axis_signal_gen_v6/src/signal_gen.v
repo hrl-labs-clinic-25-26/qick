@@ -31,6 +31,9 @@ parameter N_DDS = 16;
 // True: Generate DDS for Envelope Upconversion. False: Remove DDS for Baseband Envelope only
 parameter GEN_DDS = "TRUE";
 
+// Emulator flag to conditionally instantiate behavioral models in place of VHDL/Xilinx IP.
+// Valid values: 0 = synthesis build (use VHDL/Xilinx IP), non-zero = emulation build (use behavioral models).
+parameter EMULATOR = 0;
 
 /*********/
 /* Ports */
@@ -173,20 +176,30 @@ generate
 genvar i;
    for (i=0; i<N_DDS; i=i+1) begin : GEN_dds
    
-      if (GEN_DDS == "TRUE") begin
+      if (GEN_DDS == "TRUE") begin : gen_dds_block
          /***********************/
          /* Block instantiation */
          /***********************/
-         // DDS.
-         // Latency: 10.
-         dds_compiler_0 dds_i 
-            (
+         if (!EMULATOR) begin : gen_dds_compiler
+            // DDS.
+            // Latency: 10.
+            dds_compiler_0 dds_i (
                .aclk                   (clk                          ),
                .s_axis_phase_tvalid    (dds_tvalid_r                 ),
                .s_axis_phase_tdata     (dds_ctrl_int_r[i*72 +: 72]   ),
                .m_axis_data_tvalid     (                             ),
                .m_axis_data_tdata      (dds_dout[i]                  )
             );
+         end
+         else begin : gen_dds_model
+            dds_behavioral_model dds_i (
+               .aclk                   (clk                          ),
+               .s_axis_phase_tvalid    (dds_tvalid_r                 ),
+               .s_axis_phase_tdata     (dds_ctrl_int_r[i*72 +: 72]   ),
+               .m_axis_data_tvalid     (                             ),
+               .m_axis_data_tdata      (dds_dout[i]                  )
+            );
+         end
 
          // Latency for dds_dout (product).
          latency_reg 
@@ -282,7 +295,7 @@ genvar i;
       /*************/
       /* Registers */
       /*************/
-      if (GEN_DDS == "TRUE") begin
+      if (GEN_DDS == "TRUE") begin : gen_dds_prod_regs
          always @(posedge clk) begin
             if (~rstn) begin
                // DDS output.
@@ -337,7 +350,7 @@ genvar i;
       /*****************************/
       // Product.
       // Inputs.
-      if (GEN_DDS == "TRUE") begin
+      if (GEN_DDS == "TRUE") begin : gen_dds_comb
          assign prod_a_real[i]         = dds_dout_la[i][15:0];
          assign prod_a_imag[i]         = dds_dout_la[i][31:16];
          assign prod_b_real[i]         = mem_real_la[i];
@@ -358,7 +371,7 @@ genvar i;
 
          assign prod_y_mux[i]          = prod_y_r1[i];
       end
-      else begin
+      else begin : gen_no_dds_comb
          assign prod_y_mux[i]          = mem_la_mux[i] >> 1;   // divide by 2 to match product path scaling
          assign dds_la_mux[i][15:0]    = (2**15)-1;
       end
@@ -446,15 +459,14 @@ latency_reg
 
 // Registers.
 generate
-if (GEN_DDS == "TRUE") begin
+if (GEN_DDS == "TRUE") begin : gen_dds_input_regs
+   // DDS input control.
    always @(posedge clk) begin
       if (~rstn) begin
-         // DDS intput control.
          dds_tvalid_r   <= 0;
          dds_ctrl_int_r <= 0;
       end
       else begin
-         // DDS intput control.
          dds_tvalid_r   <= 1;
          dds_ctrl_int_r <= dds_ctrl_int;
       end
@@ -463,9 +475,7 @@ end
 endgenerate
 always @(posedge clk) begin
    if (~rstn) begin
-      // Memory address.
       mem_addr_int_r <= 0;
-      // Output enable.
       en_la_r        <= 0;
    end
    else begin

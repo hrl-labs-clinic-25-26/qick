@@ -247,6 +247,8 @@ localparam  int DAC_BITS   = 16;
 real        vref           = 1.0;      // reference voltage
 real        expected_out [N_DAC];      // per lane expected output
 integer     f_csv;
+wire  [15:0]         dout_ii [0:N_DDS-1];
+reg   [15:0]         dout_f;
 
 assign m_axis_sg_tready = 1'b1;       // always ready/consume
 
@@ -273,6 +275,7 @@ logic tb_test_run_start, tb_test_run_done;
 logic tb_test_read_start, tb_test_read_done;
 
 logic tb_load_wave, tb_load_wave_done;
+logic tb_load_out, tb_write_out;
 
 wire s0_axis_sg_aclk = s_ps_dma_aclk;
 
@@ -364,7 +367,7 @@ initial begin
     end
 
     @(posedge s0_axis_sg_aclk);
-    s0_axis_tvalid  <= 0;
+    s0_axis_sg_tvalid  <= 0;
 
     $fclose(fd);
     tb_load_mem_done    <= 1;
@@ -387,7 +390,7 @@ initial begin
 
     @(posedge sg_clk);
     $display("t = %0t", $time);
-    s1_axis_tvalid <= 1;
+    s1_axis_sg_tvalid <= 1;
     freq_r         <= freq_calc(0, N_DDS, 4);  // 120 MHz.
     phase_r        <= 0;
     addr_r         <= 22;
@@ -402,7 +405,7 @@ initial begin
 
     @(posedge sg_clk);
     $display("t = %0t", $time);
-    s1_axis_tvalid <= 1;
+    s1_axis_sg_tvalid <= 1;
     freq_r         <= freq_calc(0, N_DDS, 4);  // 120 MHz.
     phase_r        <= 0;
     addr_r         <= 22;
@@ -417,7 +420,7 @@ initial begin
 
     @(posedge sg_clk);
     $display("t = %0t", $time);
-    s1_axis_tvalid <= 1;
+    s1_axis_sg_tvalid <= 1;
     freq_r         <= freq_calc(0, N_DDS, 4);  // 120 MHz.
     phase_r        <= 0;
     addr_r         <= 22;
@@ -431,7 +434,7 @@ initial begin
     #5us;
 
     @(posedge sg_clk);
-    s1_axis_tvalid <= 0;
+    s1_axis_sg_tvalid <= 0;
     tb_load_wave_done <= 1;
 
 end

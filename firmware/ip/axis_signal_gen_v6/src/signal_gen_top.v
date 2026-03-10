@@ -41,6 +41,10 @@ parameter GEN_DDS = "TRUE";
 // COMPLEX: Allow Complex Envelope generation. REAL: Allow only Real envelope generation
 parameter ENVELOPE_TYPE = "COMPLEX";
 
+// Emulator flag to conditionally instantiate behavioral models in place of VHDL/Xilinx IP.
+// Valid values: 0 = synthesis build (use VHDL/Xilinx IP), non-zero = emulation build (use behavioral models).
+parameter EMULATOR = 0;
+
 /*********/
 /* Ports */
 /*********/
@@ -89,6 +93,10 @@ wire  [N_DDS*16-1:0] mem_dob_imag;
 /**********************/
 
 // Fifo.
+
+generate
+if (!EMULATOR) begin : gen_fifo_synth
+
 fifo_xpm
    #(
       // Data width.
@@ -115,10 +123,45 @@ fifo_xpm
       .empty  (fifo_empty   )
    );
 
+end else begin : gen_fifo_emu
+
+fifo_behav
+   #(
+      // Data width.
+      .B  (160),
+      
+      // Fifo depth.
+      .N  (16)
+   )
+   fifo_i
+   ( 
+      .rstn  (aresetn ),
+      .clk   (aclk    ),
+
+      // Write I/F.
+      .wr_en    (fifo_wr_en ),
+      .din    (fifo_din  ),
+      
+      // Read I/F.
+      .rd_en    (fifo_rd_en ),
+      .dout     (fifo_dout  ),
+      
+      // Flags.
+      .full   (fifo_full ),
+      .empty  (fifo_empty   )
+   );
+
+end
+endgenerate
+
 assign fifo_wr_en = s1_axis_tvalid_i;
 assign fifo_din      = s1_axis_tdata_i;
 
 // Data writer.
+
+generate
+if (!EMULATOR) begin : gen_data_writer_synth
+
 data_writer
    #(
       // Number of tables.
@@ -149,13 +192,52 @@ data_writer
       .WE_REG        (WE_REG           )
     );
 
+end else begin
+
+data_writer_sv
+   #(
+      // Number of tables.
+      .NT (N_DDS   ),
+      // Address map of memory.
+      .N  (N    ),
+      // Data width.
+      .B  (32      )
+   )
+   data_writer_i
+   (
+      .rstn           (s0_axis_aresetn  ),
+      .clk            (s0_axis_aclk       ),
+      
+      // AXI Stream I/F.
+      .s_axis_tready  (s0_axis_tready_o ),
+      .s_axis_tdata  (s0_axis_tdata_i  ),
+      .s_axis_tvalid (s0_axis_tvalid_i ),
+      
+      // Memory I/F.
+      .mem_en         (mem_ena         ),
+      .mem_we         (mem_wea         ),
+      .mem_addr       (mem_addra       ),
+      .mem_di         (mem_dia         ),
+      
+      // Registers.
+      .START_ADDR_REG (START_ADDR_REG     ),
+      .WE_REG        (WE_REG           )
+    );
+
+end
+endgenerate
+
 generate
    genvar i;
+
+   if (!EMULATOR) begin : gen_mem_synth
+
    for (i=0; i<N_DDS; i=i+1) begin : GEN_mem
       /***********************/
       /* Block instantiation */
       /***********************/
       // Memory for Real Part.
+
       bram_dp_xpm
       #(
          .OUT_REG_ENA   (1),
@@ -209,6 +291,70 @@ generate
         else begin
             assign mem_dob_imag[i*16 +: 16] = {16{1'b0}}; 
         end
+      end
+
+   end else begin : gen_mem_emu
+
+   for (i=0; i<N_DDS; i=i+1) begin : GEN_mem
+      /***********************/
+      /* Block instantiation */
+      /***********************/
+      // Memory for Real Part.
+
+      bram_dp_behav
+      #(
+         .OUT_REG_ENA   (1),
+         // Memory address size.
+         .N  (N),
+         // Data width.
+         .B  (16)
+      )
+      mem_real_i
+      ( 
+         .clka    (s0_axis_aclk           ),
+         .clkb    (aclk                 ),
+         .ena     (mem_ena[i]           ),
+         .enb     (1'b1                 ),
+         .wea     (mem_wea              ),
+         .web     (1'b0                 ),
+         .addra   (mem_addra               ),
+         .addrb   (mem_addrb               ),
+         .dia     (mem_dia[15:0]           ),
+         .dib     (16'h0000             ),
+         .doa     (                     ),
+         .dob     (mem_dob_real[i*16 +: 16]   )
+      );
+
+        if (ENVELOPE_TYPE == "COMPLEX") begin : gen_complex_env_type
+            // Memory for Imaginary Part.
+            bram_dp_behav
+            #(
+               .OUT_REG_ENA   (1),
+               // Memory address size.
+               .N  (N),
+               // Data width.
+               .B  (16)
+            )
+            mem_imag_i
+            ( 
+               .clka    (s0_axis_aclk            ),
+               .clkb    (aclk                 ),
+               .ena     (mem_ena[i]           ),
+               .enb     (1'b1                 ),
+               .wea     (mem_wea              ),
+               .web     (1'b0                 ),
+               .addra   (mem_addra               ),
+               .addrb   (mem_addrb               ),
+               .dia     (mem_dia[31:16]       ),
+               .dib     (16'h0000             ),
+               .doa     (                     ),
+               .dob     (mem_dob_imag[i*16 +: 16]   )
+            );
+        end
+        else begin : gen_real_env_type
+            assign mem_dob_imag[i*16 +: 16] = {16{1'b0}}; 
+        end
+      end
     
       /*************/
       /* Registers */
@@ -224,8 +370,9 @@ endgenerate
 signal_gen 
    #(
       .N                   (N             ),
-      .N_DDS               (N_DDS            ),
-      .GEN_DDS             (GEN_DDS       )
+      .N_DDS               (N_DDS         ),
+      .GEN_DDS             (GEN_DDS       ),
+      .EMULATOR            (EMULATOR      )
    )
    signal_gen_i
    (

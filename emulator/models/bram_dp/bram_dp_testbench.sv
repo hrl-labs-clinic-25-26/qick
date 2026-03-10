@@ -30,8 +30,8 @@ module bram_dp_testbench #(parameter int ADDR_WIDTH = $clog2(1024),
                         parameter int DATA_WIDTH = 32)();
     
     // common inputs
-    logic RSTA, CLKA, PIPE_ENA, REA, WEA, DOA_DV;
-    logic RSTB, CLKB, PIPE_ENB, REB, WEB, DOB_DV;
+    logic RSTA, CLKA, ENA, WEA, DOA_DV;
+    logic RSTB, CLKB, ENB, WEB, DOB_DV;
     logic [ADDR_WIDTH-1:0] ADDRA, ADDRB;
     logic [DATA_WIDTH-1:0] DIA, DIB;
     
@@ -42,13 +42,16 @@ module bram_dp_testbench #(parameter int ADDR_WIDTH = $clog2(1024),
     logic [DATA_WIDTH-1:0] DOA_IP, DOB_IP;
     
     // open source module
-    bram_dp_behav #(.OUTPUT_REG(1), .ADDR_WIDTH(ADDR_WIDTH), .DATA_WIDTH(DATA_WIDTH))
-                    oss_dut(    RSTA, CLKA, PIPE_ENA, REA, WEA, ADDRA, DIA, DOA_DV, DOA_OSS,
-                                RSTB, CLKB, PIPE_ENB, REB, WEB, ADDRB, DIB, DOB_DV, DOB_OSS);
+    // bram_dp_behav #(.OUTPUT_REG(1), .ADDR_WIDTH(ADDR_WIDTH), .DATA_WIDTH(DATA_WIDTH))
+    //                 oss_dut(    RSTA, CLKA, ENA, REA, WEA, ADDRA, DIA, DOA_DV, DOA_OSS,
+    //                             RSTB, CLKB, ENB, REB, WEB, ADDRB, DIB, DOB_DV, DOB_OSS);
+
+    bram_dp_behav #(.OUT_REG_ENA(1), .N(ADDR_WIDTH), .B(DATA_WIDTH))
+                ip_dut(CLKA, CLKB, ENA, ENB, WEA, WEB, ADDRA, ADDRB, DIA, DIB, DOA_OSS, DOB_OSS);
                                 
     // IP module
     bram_dp_xpm #(.OUT_REG_ENA(1), .N(ADDR_WIDTH), .B(DATA_WIDTH))
-                    ip_dut(CLKA, CLKB, PIPE_ENA, PIPE_ENB, WEA, WEB, ADDRA, ADDRB, DIA, DIB, DOA_IP, DOB_IP);
+                    ip_dut(CLKA, CLKB, ENA, ENB, WEA, WEB, ADDRA, ADDRB, DIA, DIB, DOA_IP, DOB_IP);
     
     // Generate Clock
     always begin
@@ -71,7 +74,7 @@ module bram_dp_testbench #(parameter int ADDR_WIDTH = $clog2(1024),
         RSTA = 1; RSTB = 1;
         #22;
         RSTA = 0; RSTB=0;
-        PIPE_ENA = 1; PIPE_ENB = 1;
+        ENA = 1; ENB = 1;
         REA = 0; WEA = 0;
         REB = 0; WEB = 0;
     end

@@ -7,7 +7,7 @@
 // Date       : 09/16/2025
 //-----------------------------------------------------------------------------
 
-`timescale 1ns / 1ps
+// `timescale 1ns / 1ps
 
 module dds_behavioral_model # (
     // Reserve for Parameters
@@ -27,7 +27,7 @@ logic [PHASE_WIDTH-1:0] phase_inc;     // PINC from AXIS
 logic [PHASE_WIDTH-1:0] phase_acc = 0;     // phase accumulator result
 logic [PHASE_WIDTH-1:0] phase_seed;    // initial phase
 logic        sync;          // strobe bit
-logic [31:0] m_axis_data_tdata_temp = '0;
+// logic [31:0] m_axis_data_tdata_temp = '0;
 
 
 // --------- UNPACK s_axis_phase_tdata --------------------------
@@ -120,11 +120,11 @@ initial begin : init_rom
                 started <= 1'b1;
             end
         end
-        else begin
-            // After startup, we don't care about the pipeline content anymore.
-            // We just leave it alone (or you could set it to all 1's or 0's).
-            valid_pipe <= valid_pipe;
-        end
+        // else begin
+        //     // After startup, we don't care about the pipeline content anymore.
+        //     // We just leave it alone (or you could set it to all 1's or 0's).
+        //     valid_pipe <= valid_pipe;
+        // end
     end
 
     // Before startup: tvalid is the delayed version (first high after DDS_LATENCY cycles).

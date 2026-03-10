@@ -1,0 +1,9 @@
+[submodule "emulator/submodules/pulp_platform/common_verification"]
+	path = emulator/submodules/pulp_platform/common_verification
+	url = https://github.com/pulp-platform/common_verification.git
+[submodule "emulator/submodules/pulp_platform/axi"]
+	path = emulator/submodules/pulp_platform/axi
+	url = https://github.com/pulp-platform/axi.git
+[submodule "emulator/submodules/pulp_platform/common_cells"]
+	path = emulator/submodules/pulp_platform/common_cells
+	url = https://github.com/pulp-platform/common_cells.git

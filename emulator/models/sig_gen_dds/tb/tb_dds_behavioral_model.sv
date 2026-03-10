@@ -1,4 +1,4 @@
-module dds_behavioral_model_tb();
+module tb_dds_behavioral_model();
 logic           aclk;
 logic           s_axis_phase_tvalid;
 logic [71:0]    s_axis_phase_tdata;
@@ -17,7 +17,6 @@ reg			resync_r;
 reg	[31:0]	poff_r;
 reg	[31:0]	pinc_r;
 
-integer i;
 
 dds_behavioral_model DUT1 (
     .aclk                   (aclk),
@@ -227,11 +226,15 @@ initial begin
 	s_axis_phase_tvalid	<= 0;
 
 	#10000;
+
+	$finish();
 end
+
 always begin
 	aclk <= 0;
 	#10;
 	aclk <= 1;
 	#10;
 end
+
 endmodule

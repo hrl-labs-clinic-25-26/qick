@@ -1,36 +1,73 @@
 /* verilator lint_off MULTIDRIVEN */
 
 module bram_dp_behav #(
-    parameter int DATA_WIDTH = 32,
-    parameter int ITEMS = 1024,
-    parameter WRITE_MODE_A = "WRITE_FIRST",
-    parameter WRITE_MODE_B = "WRITE_FIRST",
-    parameter bit OUTPUT_REG = 1,
-    parameter bit RESET_DATA_PATH = 1,
-    parameter bit DEBUG = 0,
-    parameter int ADDR_WIDTH = $clog2(ITEMS)) (
-// interface for Clock A
-input logic RSTA,                           // CLK A Sync Reset
-input logic CLKA,                           // Clock A
-input logic PIPE_ENA,                       // Pipe Enable
-input logic REA,                            // Read Enable
-input logic WEA,                            // Write Enable
-input logic [ADDR_WIDTH-1:0] ADDRA,         // Address A
-input logic [DATA_WIDTH-1:0] DIA,           // Data A In
-output logic DOA_DV,                        // Data A Valid
-output logic [DATA_WIDTH-1:0] DOA,          // Data A Out
+    parameter int OUT_REG_ENA = 0,
+    parameter int N = 16,
+    parameter int B = 16 ) (
 
-// interface for Clock B 
-input logic RSTB,                           // CLK B Sync Reset
-input logic CLKB,                           // Clock B
-input logic PIPE_ENB,                       // Pipe Enable
-input logic REB,                            // Read Enable
-input logic WEB,                            // Write Enable
-input logic [ADDR_WIDTH-1:0] ADDRB,         // Address A
-input logic [DATA_WIDTH-1:0] DIB,           // Data A In
-output logic DOB_DV,                        // Data A Valid
-output logic [DATA_WIDTH-1:0] DOB           // Data A Out
+    input  wire             clka,
+    input  wire             clkb,
+    input  wire             ena,
+    input  wire             enb,
+    input  wire             wea,
+    input  wire             web,
+    input  wire  [N-1:0]    addra,
+    input  wire  [N-1:0]    addrb,
+    input  wire  [B-1:0]    dia,
+    input  wire  [B-1:0]    dib,
+    output logic [B-1:0]    doa,
+    output logic [B-1:0]    dob
+    
 );
+
+    localparam int DATA_WIDTH      = B                  ;
+    localparam int ADDR_WIDTH      = N                  ;
+    localparam int ITEMS           = 2**N               ;
+    localparam     WRITE_MODE_A    = "NO_CHANGE"        ;
+    localparam     WRITE_MODE_B    = "NO_CHANGE"        ;
+    localparam bit OUTPUT_REG      = (OUT_REG_ENA != 0) ;
+    localparam bit RESET_DATA_PATH = 1                  ;
+    localparam bit DEBUG           = 0                  ;
+
+    // interface for Clock A
+    logic                  RSTA     ;       // CLK A Sync Reset
+    logic                  CLKA     ;       // Clock A
+    logic                  PIPE_ENA ;       // Pipe Enable
+    logic                  REA      ;       // Read Enable
+    logic                  WEA      ;       // Write Enable
+    logic [ADDR_WIDTH-1:0] ADDRA    ;       // Address A
+    logic [DATA_WIDTH-1:0] DIA      ;       // Data A In
+    logic                  DOA_DV   ;       // Data A Valid
+    logic [DATA_WIDTH-1:0] DOA      ;       // Data A Out
+
+    // interface for Clock B 
+    logic                  RSTB     ;       // CLK B Sync Reset
+    logic                  CLKB     ;       // Clock B
+    logic                  PIPE_ENB ;       // Pipe Enable
+    logic                  REB      ;       // Read Enable
+    logic                  WEB      ;       // Write Enable
+    logic [ADDR_WIDTH-1:0] ADDRB    ;       // Address A
+    logic [DATA_WIDTH-1:0] DIB      ;       // Data A In
+    logic                  DOB_DV   ;       // Data A Valid
+    logic [DATA_WIDTH-1:0] DOB      ;       // Data A Out
+
+    assign RSTA     = 1'b0;
+    assign CLKA     = clka;
+    assign PIPE_ENA = ena;
+    assign REA      = ena & ~wea;
+    assign WEA      = wea;
+    assign ADDRA    = addra;
+    assign DIA      = dia;
+    assign doa      = DOA;
+
+    assign RSTB     = 1'b0;
+    assign CLKB     = clkb;
+    assign PIPE_ENB = enb;
+    assign REB      = enb & ~web;
+    assign WEB      = web;
+    assign ADDRB    = addrb;
+    assign DIB      = dib;
+    assign dob      = DOB;
 
     // unpacked datatype
     // acces through unpacked then packed e.g. [items][data]
@@ -42,8 +79,7 @@ output logic [DATA_WIDTH-1:0] DOB           // Data A Out
 
     // memory Port A
     generate
-        // GEN_WRITE_FIRST_A
-        if (WRITE_MODE_A == "WRITE_FIRST") begin
+        if (WRITE_MODE_A == "WRITE_FIRST") begin : gen_write_first_a
             always_ff @(posedge CLKA) begin
                 if (PIPE_ENA) begin
                     if (WEA) begin
@@ -53,8 +89,7 @@ output logic [DATA_WIDTH-1:0] DOB           // Data A Out
                     doa_to_reg <= memory[ADDRA];
                 end
             end
-        // GEN_READ_FIRST_A
-        end else if (WRITE_MODE_A == "READ_FIRST") begin
+        end else if (WRITE_MODE_A == "READ_FIRST") begin : gen_read_first_a
             always_ff @(posedge CLKA) begin
                 if (PIPE_ENA) begin
                     // read happens before write
@@ -64,8 +99,7 @@ output logic [DATA_WIDTH-1:0] DOB           // Data A Out
                     end
                 end
             end
-        // GEN_NO_CHANGE_A
-        end else if (WRITE_MODE_A == "NO_CHANGE") begin
+        end else if (WRITE_MODE_A == "NO_CHANGE") begin : gen_no_change_a
             // prevents write from changing output
             always_ff @(posedge CLKA) begin
                 if (PIPE_ENA) begin
@@ -80,8 +114,7 @@ output logic [DATA_WIDTH-1:0] DOB           // Data A Out
 
     // memory Port B
     generate
-        // GEN_WRITE_FIRST_B
-        if (WRITE_MODE_B == "WRITE_FIRST") begin
+        if (WRITE_MODE_B == "WRITE_FIRST") begin : gen_write_first_b
             always_ff @(posedge CLKB) begin
                 if (PIPE_ENB) begin
                     if (WEB) begin
@@ -91,8 +124,7 @@ output logic [DATA_WIDTH-1:0] DOB           // Data A Out
                     dob_to_reg <= memory[ADDRB];
                 end
             end
-        // GEN_READ_FIRST_B
-        end else if (WRITE_MODE_B == "READ_FIRST") begin
+        end else if (WRITE_MODE_B == "READ_FIRST") begin : gen_read_first_b
             always_ff @(posedge CLKB) begin
                 if (PIPE_ENB) begin
                     // read happens before write
@@ -102,8 +134,7 @@ output logic [DATA_WIDTH-1:0] DOB           // Data A Out
                     end
                 end
             end
-        // GEN_NO_CHANGE_B
-        end else if (WRITE_MODE_B == "NO_CHANGE") begin
+        end else if (WRITE_MODE_B == "NO_CHANGE") begin : gen_no_change_b
             // prevents write from changing output
             always_ff @(posedge CLKB) begin
                 if (PIPE_ENB) begin
@@ -122,8 +153,7 @@ output logic [DATA_WIDTH-1:0] DOB           // Data A Out
 
     // Output Registers
     generate
-        // OUTPUT_REG_GEN
-        if (OUTPUT_REG) begin
+        if (OUTPUT_REG) begin : gen_output_reg
             // DOA Data and Data Valid
             always_ff @(posedge CLKA) begin
                 if (RSTA) begin                 // control path reset
@@ -164,8 +194,7 @@ output logic [DATA_WIDTH-1:0] DOB           // Data A Out
             assign DOA_DV = reg_doa_dv2;
             assign DOB_DV = reg_dob_dv2;
 
-        // NO_OUTPUT_REG_GEN
-        end else begin
+        end else begin : gen_no_output_reg
             // no output registers
             always_ff @(posedge CLKA) begin
                 if (RSTA) begin

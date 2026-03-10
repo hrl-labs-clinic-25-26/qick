@@ -72,6 +72,10 @@ parameter GEN_DDS = "TRUE";
 //parameter ENVELOPE_TYPE = "REAL";
 parameter ENVELOPE_TYPE = "COMPLEX";
 
+// Emulator flag to conditionally instantiate 
+// behavioral models in place of VHDL/Xilinx IP.
+// Valid values: 0 for synthesis (default), non-zero for emulation.
+parameter EMULATOR = 0;
 
 /*********/
 /* Ports */
@@ -133,6 +137,10 @@ wire              WE_REG;
 /**********************/
 // `uselib lib=lib_axis_signal_gen_v6
 // AXI Slave.
+
+generate 
+if (!EMULATOR) begin : gen_axi_slv_synth 
+
 axi_slv_sg_v6 axi_slv_i
    (
       .aclk                      (s_axi_aclk    ),
@@ -172,12 +180,57 @@ axi_slv_sg_v6 axi_slv_i
       .WE_REG                    (WE_REG        )
    );
 
+end else begin : gen_axi_slv_emu
+
+axi_slv_sg_v6_sv axi_slv_i
+   (
+      .aclk                      (s_axi_aclk    ),
+      .aresetn                   (s_axi_aresetn ),
+
+      // Write Address Channel.
+      .awaddr                    (s_axi_awaddr  ),
+      .awprot                    (s_axi_awprot  ),
+      .awvalid                   (s_axi_awvalid ),
+      .awready                   (s_axi_awready ),
+
+      // Write Data Channel.
+      .wdata                     (s_axi_wdata   ),
+      .wstrb                     (s_axi_wstrb   ),
+      .wvalid                    (s_axi_wvalid  ),
+      .wready                    (s_axi_wready  ),
+
+      // Write Response Channel.
+      .bresp                     (s_axi_bresp   ),
+      .bvalid                    (s_axi_bvalid  ),
+      .bready                    (s_axi_bready  ),
+
+      // Read Address Channel.
+      .araddr                    (s_axi_araddr  ),
+      .arprot                    (s_axi_arprot  ),
+      .arvalid                   (s_axi_arvalid ),
+      .arready                   (s_axi_arready ),
+
+      // Read Data Channel.
+      .rdata                     (s_axi_rdata   ),
+      .rresp                     (s_axi_rresp   ),
+      .rvalid                    (s_axi_rvalid  ),
+      .rready                    (s_axi_rready  ),
+
+      // Registers.
+      .START_ADDR_REG            (START_ADDR_REG),
+      .WE_REG                    (WE_REG        )
+   );
+
+end
+endgenerate
+
 signal_gen_top
    #(
       .N                                  (N                ),
       .N_DDS                              (N_DDS            ),
       .GEN_DDS                            (GEN_DDS          ),
-      .ENVELOPE_TYPE                      (ENVELOPE_TYPE    )
+      .ENVELOPE_TYPE                      (ENVELOPE_TYPE    ), 
+      .EMULATOR                           (EMULATOR         )
    )
    signal_gen_top_i
    (

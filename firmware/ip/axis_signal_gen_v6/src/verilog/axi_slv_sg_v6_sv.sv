@@ -89,7 +89,7 @@ module axi_slv_sg_v6_sv #(parameter DATA_WIDTH = 32, parameter ADDR_WIDTH = 6)(
     always_ff@(posedge aclk) begin 
         if (~aresetn) begin 
             axi_awready <= 0;
-            aw_en <= 0;
+            aw_en <= 1;
         end else begin 
             if (axi_awready == 0 && awvalid == 1 && wvalid == 1 && aw_en == 1) begin 
                 axi_awready <= 1;
@@ -129,8 +129,9 @@ module axi_slv_sg_v6_sv #(parameter DATA_WIDTH = 32, parameter ADDR_WIDTH = 6)(
     // Implement memory mapped register select and write logic generation
     assign slv_reg_wren = axi_wready && wvalid && axi_awready && awvalid;
 
-    always_ff@(posedge aclk) begin : decoding_regs_aclk
-        logic [OPT_MEM_ADDR_BITS:0] loc_addr;
+    logic [OPT_MEM_ADDR_BITS:0] loc_addr;
+    assign loc_addr = axi_awaddr[(ADDR_LSB + OPT_MEM_ADDR_BITS):ADDR_LSB];
+    always_ff @(posedge aclk) begin : decoding_regs_aclk
         if (~aresetn) begin 
             slv_reg0 <= 0;
             slv_reg1 <= 0;
@@ -149,9 +150,7 @@ module axi_slv_sg_v6_sv #(parameter DATA_WIDTH = 32, parameter ADDR_WIDTH = 6)(
             slv_reg14 <= 0;
             slv_reg15 <= 0;
         end else begin 
-            loc_addr <= axi_awaddr[(ADDR_LSB + OPT_MEM_ADDR_BITS):ADDR_LSB];
-
-            if (slv_reg_wren) begin 
+            if (slv_reg_wren) begin
                 case (loc_addr)
                     'b0000: begin
                            for (int byte_index = 0; byte_index < (DATA_WIDTH/8); byte_index++) begin
@@ -317,6 +316,40 @@ module axi_slv_sg_v6_sv #(parameter DATA_WIDTH = 32, parameter ADDR_WIDTH = 6)(
             end
         end
     end
+
+
+    /* AI CODE UNTESTED 
+
+    // Signal to capture the completion of the write transaction
+    logic write_transaction_completed;
+
+    // Combinational logic to detect write transaction completion
+    assign write_transaction_completed = axi_awready && awvalid && axi_wready && wvalid;
+
+    // Implement write response logic generation
+    always_ff@(posedge aclk) begin 
+        if (~aresetn) begin 
+            axi_bvalid <= 0;
+            axi_bresp <= 2'b00; // Assuming OKAY response
+        end else begin 
+            if (write_transaction_completed) begin 
+                // Assert bvalid one cycle after the transaction completes
+                axi_bvalid <= 1;
+                axi_bresp <= 2'b00;
+            end else if (bready == 1 && axi_bvalid == 1) begin 
+                // Deassert bvalid when master is ready to receive the response
+                axi_bvalid <= 0;
+            end
+        end
+    end
+*/
+
+// always @(posedge aclk) begin
+//     $display("%0t AWV=%b AWREADY=%b WVAL=%b WREADY=%b slv_reg1=%0h START_ADDR_REG=%0h",
+//              $time, awvalid, awready, wvalid, wready, slv_reg1, START_ADDR_REG);
+// end
+
+    /* END AI CODE */
 
     // Implement axi_arready generation
     always_ff@(posedge aclk) begin 

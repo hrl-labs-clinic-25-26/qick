@@ -1,0 +1,24 @@
+[options]
+mode prove
+depth 30
+
+[engines]
+smtbmc boolector
+
+[files]
+synchronizer_n.vhd
+synchronizer_n_sv.sv
+data_writer.vhd
+data_writer_sv.sv
+data_writer_sva.sv
+
+[script]
+plugin -i ghdl
+# Analyze VHDL
+ghdl --std=08 synchronizer_n.vhd data_writer.vhd -e data_writer
+# Analyze SV - Must include the SV synchronizer now
+read_verilog -sv -formal synchronizer_n_sv.sv
+read_verilog -sv -formal data_writer_sv.sv
+read_verilog -sv -formal data_writer_sva.sv
+# Elaborate SV top
+prep -top data_writer_sv
