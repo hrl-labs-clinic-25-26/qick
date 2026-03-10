@@ -71,6 +71,10 @@ parameter N_BUF = 10;
 // Number of bits.
 parameter B = 16;
 
+// Emulator flag to conditionally instantiate behavioral models in place of VHDL/Xilinx IP.
+// Valid values: 0 = synthesis build (use VHDL/Xilinx IP), non-zero = emulation build (use behavioral models).
+parameter EMULATOR = 0;
+
 ///////////
 // Ports //
 ///////////
@@ -127,6 +131,8 @@ wire trigger_resync;
 //////////////////
 
 // trigger_resync
+generate
+if (!EMULATOR) begin : gen_synchronizer
 synchronizer_n
 	#(
 		.N	(2)
@@ -138,11 +144,28 @@ synchronizer_n
 		.data_out	(trigger_resync	)
 	);
 
+end else begin: gen_synchronizer_model
+
+synchronizer_n_sv
+	#(
+		.N	(2)
+	)
+	trigger_resync_i (
+		.rstn	    (s_axis_aresetn	),
+		.clk 		(s_axis_aclk	),
+		.data_in	(trigger		),
+		.data_out	(trigger_resync	)
+	);
+
+end
+endgenerate
+
 // Average block.
 avg_top 
 	#(
 		.N	(N_AVG	),
-		.B	(B		)
+		.B	(B		).
+		.EMULATOR (EMULATOR)
 	)
 	avg_top_i
 	(
@@ -188,7 +211,8 @@ avg_top
 buffer_top 
 	#(
 		.N	(N_BUF	),
-		.B	(B		)
+		.B	(B		),
+		.EMULATOR (EMULATOR)
 	)
 	buffer_top_i
 	(

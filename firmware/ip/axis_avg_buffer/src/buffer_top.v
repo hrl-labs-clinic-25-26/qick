@@ -44,6 +44,7 @@ parameter N = 10;
 
 // Number of bits.
 parameter B = 16;
+parameter EMULATOR = 0;
 
 ///////////
 // Ports //
@@ -85,28 +86,59 @@ wire				DR_START_REG_resync;
 //////////////////
 
 // BUF_START_REG_resync
-synchronizer_n
-	#(
-		.N	(2)
-	)
-	BUF_START_REG_resync_i (
-		.rstn	    (rstn					),
-		.clk 		(clk					),
-		.data_in	(BUF_START_REG			),
-		.data_out	(BUF_START_REG_resync	)
-	);
+generate
+if (!EMULATOR) begin : gen_synchronizer_BUF
+	synchronizer_n
+		#(
+			.N	(2)
+		)
+		BUF_START_REG_resync_i (
+			.rstn	    (rstn					),
+			.clk 		(clk					),
+			.data_in	(BUF_START_REG			),
+			.data_out	(BUF_START_REG_resync	)
+		);
+end else begin: gen_synchronizer_BUF_sv
+	synchronizer_n_sv
+		#(
+			.N	(2)
+		)
+		BUF_START_REG_resync_i (
+			.rstn	    (rstn					),
+			.clk 		(clk					),
+			.data_in	(BUF_START_REG			),
+			.data_out	(BUF_START_REG_resync	)
+		);
+end
+endgenerate
+
 
 //DR_START_REG_resync
-synchronizer_n
-	#(
-		.N	(2)
-	)
-	DR_START_REG_resync_i (
-		.rstn	    (m_axis_aresetn			),
-		.clk 		(m_axis_aclk			),
-		.data_in	(DR_START_REG			),
-		.data_out	(DR_START_REG_resync	)
-	);
+generate
+if (!EMULATOR) begin : gen_synchronizer_DR
+	synchronizer_n
+		#(
+			.N	(2)
+		)
+		DR_START_REG_resync_i (
+			.rstn	    (m_axis_aresetn			),
+			.clk 		(m_axis_aclk			),
+			.data_in	(DR_START_REG			),
+			.data_out	(DR_START_REG_resync	)
+		);
+end else begin: gen_synchronizer_DR_sv
+	synchronizer_n_sv
+		#(
+			.N	(2)
+		)
+		DR_START_REG_resync_i (
+			.rstn	    (m_axis_aresetn			),
+			.clk 		(m_axis_aclk			),
+			.data_in	(DR_START_REG			),
+			.data_out	(DR_START_REG_resync	)
+		);
+end
+endgenerate
 
 // Buffer block.
 buffer 
@@ -140,56 +172,114 @@ buffer
 
 // Dual port BRAM.
 // BRAM depth is 2**N. BRAM word with is B.
-bram_dp
-    #(
-		.N	(N	),
-        .B 	(2*B)
-    )
-    bram_i 
-	( 
-		.clka	(clk			),
-		.clkb	(m_axis_aclk	),
-		.ena    (1'b1			),
-		.enb    (1'b1			),
-		.wea    (mem_we_int		),
-		.web    (1'b0			),
-		.addra  (mem_addra_int	),
-		.addrb  (mem_addrb_int	),
-		.dia    (mem_di_int		),
-		.dib    ({4*B{1'b0}}	),
-		.doa    (				),
-		.dob    (mem_do_int		)
-    );
+generate
+if (!EMULATOR) begin: gen_bram_dp
+	bram_dp
+		#(
+			.N	(N	),
+			.B 	(2*B)
+		)
+		bram_i 
+		( 
+			.clka	(clk			),
+			.clkb	(m_axis_aclk	),
+			.ena    (1'b1			),
+			.enb    (1'b1			),
+			.wea    (mem_we_int		),
+			.web    (1'b0			),
+			.addra  (mem_addra_int	),
+			.addrb  (mem_addrb_int	),
+			.dia    (mem_di_int		),
+			.dib    ({4*B{1'b0}}	),
+			.doa    (				),
+			.dob    (mem_do_int		)
+		);
+end else begin: gen_bram_dp_sv
+	bram_dp_sv
+		#(
+			.N	(N	),
+			.B 	(2*B)
+		)
+		bram_i 
+		( 
+			.clka	(clk			),
+			.clkb	(m_axis_aclk	),
+			.ena    (1'b1			),
+			.enb    (1'b1			),
+			.wea    (mem_we_int		),
+			.web    (1'b0			),
+			.addra  (mem_addra_int	),
+			.addrb  (mem_addrb_int	),
+			.dia    (mem_di_int		),
+			.dib    ({4*B{1'b0}}	),
+			.doa    (				),
+			.dob    (mem_do_int		)
+		);
+end
+endgenerate
 
+generate
+if (!EMULATOR) begin: gen_data_reader
 // Data reader.
-data_reader
-    #(
-		.N	(N	),
-		.B	(2*B)
-    )
-    data_reader_i
-    (
-        // Reset and clock.
-        .rstn		(m_axis_aresetn			),
-        .clk		(m_axis_aclk			),
-        
-        // Memory I/F.
-        .mem_en     (						),
-        .mem_we     (						),
-        .mem_addr   (mem_addrb_int			),
-        .mem_dout   (mem_do_int				),
-        
-        // Data out.
-        .dout       (m_axis_tdata			),
-        .dready     (m_axis_tready			),
-        .dvalid     (m_axis_tvalid			),
-        .dlast      (m_axis_tlast			),
+	data_reader
+		#(
+			.N	(N	),
+			.B	(2*B)
+		)
+		data_reader_i
+		(
+			// Reset and clock.
+			.rstn		(m_axis_aresetn			),
+			.clk		(m_axis_aclk			),
+			
+			// Memory I/F.
+			.mem_en     (						),
+			.mem_we     (						),
+			.mem_addr   (mem_addrb_int			),
+			.mem_dout   (mem_do_int				),
+			
+			// Data out.
+			.dout       (m_axis_tdata			),
+			.dready     (m_axis_tready			),
+			.dvalid     (m_axis_tvalid			),
+			.dlast      (m_axis_tlast			),
 
-        // Registers.
-		.START_REG	(DR_START_REG_resync	),
-		.ADDR_REG	(DR_ADDR_REG			),
-		.LEN_REG	(DR_LEN_REG				)
-    );
+			// Registers.
+			.START_REG	(DR_START_REG_resync	),
+			.ADDR_REG	(DR_ADDR_REG			),
+			.LEN_REG	(DR_LEN_REG				)
+		);
+end else begin: gen_data_reader_sv
+	data_reader_sv
+		#(
+			.N	(N	),
+			.B	(2*B)
+		)
+		data_reader_i
+		(
+			// Reset and clock.
+			.rstn		(m_axis_aresetn			),
+			.clk		(m_axis_aclk			),
+			
+			// Memory I/F.
+			.mem_en     (						),
+			.mem_we     (						),
+			.mem_addr   (mem_addrb_int			),
+			.mem_dout   (mem_do_int				),
+			
+			// Data out.
+			.dout       (m_axis_tdata			),
+			.dready     (m_axis_tready			),
+			.dvalid     (m_axis_tvalid			),
+			.dlast      (m_axis_tlast			),
+
+			// Registers.
+			.START_REG	(DR_START_REG_resync	),
+			.ADDR_REG	(DR_ADDR_REG			),
+			.LEN_REG	(DR_LEN_REG				)
+		);
+end
+endgenerate
 
 endmodule
 

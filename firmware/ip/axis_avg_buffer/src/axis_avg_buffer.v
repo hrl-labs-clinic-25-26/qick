@@ -78,6 +78,8 @@ parameter N_BUF = 10;
 // Number of bits.
 parameter B = 16;
 
+parameter EMULATOR = 0;
+
 /*********/
 /* Ports */
 /*********/
@@ -161,6 +163,9 @@ wire	[N_BUF-1:0]	BUF_DR_LEN_REG;
 // `uselib lib=lib_axis_avg_buffer
 // AXI Slave.
 // axi_slv axi_slv_i
+generate
+if (!EMULATOR) begin : gen_axi_slv_avg_buf
+
 axi_slv_avg_buf axi_slv_i
 	(
 		.aclk				(s_axi_aclk	 		),
@@ -212,13 +217,70 @@ axi_slv_avg_buf axi_slv_i
 		.BUF_DR_ADDR_REG	(BUF_DR_ADDR_REG	),
 		.BUF_DR_LEN_REG		(BUF_DR_LEN_REG		)
 	);
+end else begin: axi_slv_avg_buf_sv
+
+	axi_slv_avg_buf_sv axi_slv_i
+	(
+		.aclk				(s_axi_aclk	 		),
+		.aresetn			(s_axi_aresetn		),
+
+		// Write Address Channel.
+		.awaddr				(s_axi_awaddr 		),
+		.awprot				(s_axi_awprot 		),
+		.awvalid			(s_axi_awvalid		),
+		.awready			(s_axi_awready		),
+
+		// Write Data Channel.
+		.wdata				(s_axi_wdata		),
+		.wstrb				(s_axi_wstrb		),
+		.wvalid				(s_axi_wvalid   	),
+		.wready				(s_axi_wready		),
+
+		// Write Response Channel.
+		.bresp				(s_axi_bresp		),
+		.bvalid				(s_axi_bvalid		),
+		.bready				(s_axi_bready		),
+
+		// Read Address Channel.
+		.araddr				(s_axi_araddr 		),
+		.arprot				(s_axi_arprot 		),
+		.arvalid			(s_axi_arvalid		),
+		.arready			(s_axi_arready		),
+
+		// Read Data Channel.
+		.rdata				(s_axi_rdata		),
+		.rresp				(s_axi_rresp		),
+		.rvalid				(s_axi_rvalid		),
+		.rready				(s_axi_rready		),
+
+		// Registers.
+		.AVG_START_REG		(AVG_START_REG		),
+		.AVG_ADDR_REG		(AVG_ADDR_REG		),
+		.AVG_LEN_REG		(AVG_LEN_REG		),
+		.AVG_PHOTON_MODE_REG (AVG_PHOTON_MODE_REG),
+		.AVG_H_THRSH_REG    (AVG_H_THRSH_REG    ),
+		.AVG_L_THRSH_REG    (AVG_L_THRSH_REG    ),
+		.AVG_DR_START_REG	(AVG_DR_START_REG	),
+		.AVG_DR_ADDR_REG	(AVG_DR_ADDR_REG	),
+		.AVG_DR_LEN_REG		(AVG_DR_LEN_REG		),
+		.BUF_START_REG		(BUF_START_REG		),
+		.BUF_ADDR_REG		(BUF_ADDR_REG		),
+		.BUF_LEN_REG		(BUF_LEN_REG		),
+		.BUF_DR_START_REG	(BUF_DR_START_REG	),
+		.BUF_DR_ADDR_REG	(BUF_DR_ADDR_REG	),
+		.BUF_DR_LEN_REG		(BUF_DR_LEN_REG		)
+	);
+
+end
+endgenerate
 
 // Averager + Buffer Top.
 avg_buffer
 	#(
 		.N_AVG	(N_AVG	),
 		.N_BUF	(N_BUF	),
-		.B		(B		)
+		.B		(B		),
+		.EMULATOR (EMULATOR)
 	)
 	avg_buffer_i
 	(
