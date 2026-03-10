@@ -897,6 +897,8 @@ module arith (
    output wire                ready_o        ,
    output wire signed [63:0]  arith_result_o );
 
+parameter EMULATOR = 0;
+
 // DSP OUTPUTS
 wire [45:0] arith_result ;
 // DSP INPUTS
@@ -940,16 +942,32 @@ always_ff @ (posedge clk_i, negedge rst_ni) begin
    end
 end
 
+generate
+if (!EMULATOR) begin : gen_dsp_macro_ip
 
-dsp_macro_0 ARITH_DSP (
-  .CLK  ( clk_i        ),  // input wire CLK
-  .SEL  ( ALU_OP       ),  // input wire [3 : 0] SEL
-  .A    ( A_dt[26:0]   ),  // input wire [26 : 0] A
-  .B    ( B_dt[17:0]   ),  // input wire [17 : 0] B
-  .C    ( C_dt[31:0]   ),  // input wire [31 : 0] C
-  .D    ( D_dt[26:0]   ),  // input wire [26 : 0] D
-  .P    ( arith_result )   // output wire [45 : 0] P
-);
+   dsp_macro_0 ARITH_DSP (
+   .CLK  ( clk_i        ),  // input wire CLK
+   .SEL  ( ALU_OP       ),  // input wire [3 : 0] SEL
+   .A    ( A_dt[26:0]   ),  // input wire [26 : 0] A
+   .B    ( B_dt[17:0]   ),  // input wire [17 : 0] B
+   .C    ( C_dt[31:0]   ),  // input wire [31 : 0] C
+   .D    ( D_dt[26:0]   ),  // input wire [26 : 0] D
+   .P    ( arith_result )   // output wire [45 : 0] P
+   );
+end else begin: gen_dsp_macro_sv
+
+   dsp_macro ARITH_DSP (
+   .CLK  ( clk_i        ),  // input wire CLK
+   .SEL  ( ALU_OP       ),  // input wire [3 : 0] SEL
+   .A    ( A_dt[26:0]   ),  // input wire [26 : 0] A
+   .B    ( B_dt[17:0]   ),  // input wire [17 : 0] B
+   .C    ( C_dt[31:0]   ),  // input wire [31 : 0] C
+   .D    ( D_dt[26:0]   ),  // input wire [26 : 0] D
+   .P    ( arith_result )   // output wire [45 : 0] P
+   );
+
+end
+endgenerate
 
 //signed extension of 
 assign arith_result_o  = { {18{arith_result[45]}}, arith_result };

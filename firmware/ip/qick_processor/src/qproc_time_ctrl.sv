@@ -21,6 +21,10 @@ module qproc_time_ctrl (
    input  wire  [31:0]    updt_dt_i    , 
    output wire  [47:0]    time_abs_o   );
 
+
+
+parameter EMULATOR = 0;
+
 // Time ABS
 ///////////////////////////////////////////////////////////////////////////////
 (* use_dsp = "yes" *) reg [47:0] time_abs;
@@ -93,33 +97,41 @@ always_comb begin : CTRL_ST_AND_OUTPUT_DECODE
    endcase 
 end
 
- // Time Operation
- ADDSUB_MACRO #(
-       .DEVICE     ("7SERIES"),        // Target Device: "7SERIES" 
-       .LATENCY    ( 1   ),            // Desired clock cycle latency, 0-2
-       .WIDTH      ( 48  )             // Input / output bus width, 1-48
-    ) TIME_ADDER (
-       .CARRYOUT   (                   ), // 1-bit carry-out output signal
-       .RESULT     ( time_abs          ), // Add/sub result output, width defined by WIDTH parameter
-       .B          ( time_abs          ), // Input A bus, width defined by WIDTH parameter
-       .ADD_SUB    ( 1'b1              ), // 1-bit add/sub input, high selects add, low selects subtract
-       .A          ( time_inc          ), // Input B bus, width defined by WIDTH parameter
-       .CARRYIN    ( time_c_in         ), // 1-bit carry-in input
-       .CE         ( time_cnt_en | time_cnt_rst        ), // 1-bit clock enable input
-       .CLK        ( t_clk_i           ), // 1-bit clock input
-       .RST        ( time_cnt_rst      )  // 1-bit active high synchronous reset
-    );
+generate
+   if(!EMULATOR) begin: addsub_ip
 
-//// Time Operation
-// NOTE: code to infer the DSP, although not sure if it does exactly the same
-//always @ (posedge t_clk_i) begin
-//   if (time_cnt_rst) begin
-//      time_abs    <= 'd0;
-//   end
-//   else if (time_cnt_en) begin
-//      time_abs    <= $signed({1'b0,time_abs}) + $signed(time_inc);
-//   end
-//end
+      // Time Operation
+      ADDSUB_MACRO #(
+            .DEVICE     ("7SERIES"),        // Target Device: "7SERIES" 
+            .LATENCY    ( 1   ),            // Desired clock cycle latency, 0-2
+            .WIDTH      ( 48  )             // Input / output bus width, 1-48
+         ) TIME_ADDER (
+            .CARRYOUT   (                   ), // 1-bit carry-out output signal
+            .RESULT     ( time_abs          ), // Add/sub result output, width defined by WIDTH parameter
+            .B          ( time_abs          ), // Input A bus, width defined by WIDTH parameter
+            .ADD_SUB    ( 1'b1              ), // 1-bit add/sub input, high selects add, low selects subtract
+            .A          ( time_inc          ), // Input B bus, width defined by WIDTH parameter
+            .CARRYIN    ( time_c_in         ), // 1-bit carry-in input
+            .CE         ( time_cnt_en | time_cnt_rst        ), // 1-bit clock enable input
+            .CLK        ( t_clk_i           ), // 1-bit clock input
+            .RST        ( time_cnt_rst      )  // 1-bit active high synchronous reset
+         );
+      
+   
+  end else begin addsub_custom:
+  
+         // Time Operation
+         // NOTE: code to infer the DSP, although not sure if it does exactly the same
+         always @ (posedge t_clk_i) begin
+         if (time_cnt_rst) begin
+            time_abs    <= 'd0;
+         end
+         else if (time_cnt_en) begin
+            time_abs    <= $signed({1'b0,time_abs}) + $signed(time_inc);
+         end
+         end
+end
+   endgenerate
 
 assign time_abs_o = time_abs;
 

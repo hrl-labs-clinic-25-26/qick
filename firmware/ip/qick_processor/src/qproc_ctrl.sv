@@ -11,7 +11,8 @@
 */
 //////////////////////////////////////////////////////////////////////////////
 module qproc_ctrl # (
-   parameter TIME_READ      =  1
+   parameter TIME_READ      =  1,
+   parameter  EMULATOR      =  0
 )(
 // Time, Core and AXI CLK & RST.
    input   wire        t_clk_i         ,
@@ -302,7 +303,9 @@ end
 
 // Time ABS
 ///////////////////////////////////////////////////////////////////////////////
-qproc_time_ctrl QTIME_CTRL ( 
+qproc_time_ctrl #(
+   .EMULATOR (EMULATOR)
+)QTIME_CTRL ( 
    .t_clk_i       ( t_clk_i      ) ,
    .t_rst_ni      ( t_rst_ni     ) ,
    .time_en_i     ( time_en_o    ) ,

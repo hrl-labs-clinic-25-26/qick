@@ -29,7 +29,8 @@ module qick_processor # (
    parameter OUT_TRIG_QTY   =  1 ,
    parameter OUT_DPORT_QTY  =  1 ,
    parameter OUT_DPORT_DW   =  4 ,
-   parameter OUT_WPORT_QTY  =  1 
+   parameter OUT_WPORT_QTY  =  1 ,
+   parameter EMULATOR       = 0
 )(
 // Time, Core and AXI CLK & RST.
    input   wire            t_clk_i        ,
@@ -177,7 +178,8 @@ wire [31:0]    core_ds ;
 wire [2:0] time_st_ds, core_st_ds;
 wire [6:0] ctrl_t_ds, ctrl_c_ds;
 qproc_ctrl # (
-   .TIME_READ ( TIME_READ )
+   .TIME_READ ( TIME_READ ),
+   .EMULATOR  (EMULATOR)
 ) QPROC_CTRL (
    .t_clk_i         ( t_clk_i            ),
    .t_rst_ni        ( t_rst_ni           ),
@@ -404,7 +406,9 @@ qproc_mem_ctrl # (
 
 // AXI REGISTERS
 ///////////////////////////////////////////////////////////////////////////////
-qproc_axi_reg QPROC_xREG (
+qproc_axi_reg #(
+   .EMULATOR      (EMULATOR)
+) QPROC_xREG (
    .ps_aclk          ( ps_clk_i            ) , 
    .ps_aresetn       ( ps_rst_ni           ) , 
    .IF_s_axireg      ( IF_s_axireg         ) ,
@@ -515,7 +519,9 @@ endgenerate
 ///////////////////////////////////////////////////////////////////////////////
 generate
    if (ARITH == 1) begin : QPER_ARITH
-      arith ARITH (
+      arith #(
+         .EMULATOR   (EMULATOR)
+      )ARITH (
          .clk_i          ( c_clk_i ) ,
          .rst_ni         ( c_rst_ni ) ,
          .start_i        ( int_arith_pen ) ,
